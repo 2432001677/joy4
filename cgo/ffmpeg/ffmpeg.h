@@ -2,7 +2,7 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
-//#include <libavresample/avresample.h> -> we got rid of this as its deprecated in n5.0.1
+#include <libavresample/avresample.h> //-> we got rid of this as its deprecated in n5.0.1
 #include <libavutil/opt.h>
 #include <string.h>
 #include <libswscale/swscale.h>

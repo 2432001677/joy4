@@ -20,6 +20,15 @@ int wrap_avcodec_send_packet(AVCodecContext *ctx, void *data, int size) {
 int wrap_avcodec_receive_frame(AVCodecContext *ctx, AVFrame *frame) {
 	return avcodec_receive_frame(ctx, frame);
 }
+int wrap_avcodec_decode_video2(AVCodecContext *ctx, AVFrame *frame, void *data, int size, int *got) {
+	struct AVPacket pkt = {.data = data, .size = size};
+	return avcodec_decode_video2(ctx, frame, got, &pkt);
+}
+int wrap_avcodec_decode_video2_empty(AVCodecContext *ctx, AVFrame *frame, void *data, int size, int *got) {
+	struct AVPacket pkt = {.data = NULL, .size = 0};
+	return avcodec_decode_video2(ctx, frame, got, &pkt);
+}
+
 int wrap_av_opt_set_int_list(void* obj, const char* name, void* val, int64_t term, int64_t flags) {
 	if (av_int_list_length(val, term) > INT_MAX / sizeof(*(val))) {
 		return AVERROR(EINVAL);
@@ -38,29 +47,16 @@ type VideoFramerate struct {
 
 type VideoFrame struct {
 	Image      image.YCbCr
-	ImageNRGBA image.NRGBA
-	ImageGray  image.Gray
-	Frame      *C.AVFrame
-	Framerate  VideoFramerate
+	frame      *C.AVFrame
 }
 
 func (self *VideoFrame) Free() {
 	self.Image = image.YCbCr{}
-	self.ImageGray = image.Gray{}
-	if self.Frame != nil {
-		C.av_frame_free(&self.Frame)
-		self.Frame = nil
-	}
+	C.av_frame_free(&self.frame)
 }
 
 func FreeVideoFrame(self *VideoFrame) {
 	self.Free()
-}
-
-func AllocVideoFrame() *VideoFrame {
-	return &VideoFrame{
-		Frame: C.av_frame_alloc(),
-	}
 }
 
 func (v VideoFrame) Width() int {
@@ -72,7 +68,7 @@ func (v VideoFrame) Height() int {
 }
 
 func (v VideoFrame) GetPixelFormat() av.PixelFormat {
-	return PixelFormatFF2AV(int32(v.Frame.format))
+	return PixelFormatFF2AV(int32(v.frame.format))
 }
 
 func (v VideoFrame) GetStride() (yStride, cStride int) {
@@ -87,14 +83,10 @@ func (v VideoFrame) GetDataPtr() (y, cb, cr *[]uint8) {
 	return &v.Image.Y, &v.Image.Cb, &v.Image.Cr
 }
 
-// GetFramerate returns the framerate as a fraction (numerator and denominator)
-func (v VideoFrame) GetFramerate() (num, den int) {
-	return v.Framerate.Num, v.Framerate.Den
-}
 
 func (v VideoFrame) GetScanningMode() (mode av.ScanningMode) {
-	if int(v.Frame.interlaced_frame) != 0 {
-		if int(v.Frame.top_field_first) != 0 {
+	if int(v.frame.interlaced_frame) != 0 {
+		if int(v.frame.top_field_first) != 0 {
 			return av.InterlacedTFF
 		} else {
 			return av.InterlacedBFF
@@ -105,7 +97,7 @@ func (v VideoFrame) GetScanningMode() (mode av.ScanningMode) {
 
 // GetPictureType returns the encoded picture type
 func (v VideoFrame) GetPictureType() (picType h264parser.SliceType, err error) {
-	switch v.Frame.pict_type {
+	switch v.frame.pict_type {
 	case C.AV_PICTURE_TYPE_I:
 		return h264parser.SLICE_I, nil
 	case C.AV_PICTURE_TYPE_P:
@@ -113,11 +105,11 @@ func (v VideoFrame) GetPictureType() (picType h264parser.SliceType, err error) {
 	case C.AV_PICTURE_TYPE_B:
 		return h264parser.SLICE_B, nil
 	}
-	return 0, fmt.Errorf("Unsupported picture type: %d", int(v.Frame.pict_type))
+	return 0, fmt.Errorf("Unsupported picture type: %d", int(v.frame.pict_type))
 }
 
 func (v *VideoFrame) SetPixelFormat(format av.PixelFormat) {
-	v.Frame.format = C.int32_t(PixelFormatAV2FF(format))
+	v.frame.format = C.int32_t(PixelFormatAV2FF(format))
 }
 
 func (v *VideoFrame) SetStride(yStride, cStride int) {
@@ -129,11 +121,6 @@ func (v *VideoFrame) SetResolution(w, h int) {
 	v.Image.Rect = image.Rectangle{image.Point{0, 0}, image.Point{w, h}}
 }
 
-// SetFramerate sets the frame's FPS numerator and denominator
-func (v *VideoFrame) SetFramerate(num, den int) {
-	v.Framerate.Num = num
-	v.Framerate.Den = den
-}
 
 type VideoScaler struct {
 	inHeight       int
@@ -196,8 +183,8 @@ func (self *VideoScaler) videoScaleOne(src *VideoFrame) (dst *VideoFrame, err er
 	C.sws_scale(self.swsCtx, &srcPtr[0], &inStrides[0], 0, C.int(self.inHeight), &dataPtr[0], &outStrides[0])
 
 	dst = &VideoFrame{}
-	dst.Frame = &C.AVFrame{} // TODO deep copy input to keep frame properties
-	dst.Frame.format = C.int32_t(PixelFormatAV2FF(self.OutPixelFormat))
+	dst.frame = &C.AVFrame{} // TODO deep copy input to keep frame properties
+	dst.frame.format = C.int32_t(PixelFormatAV2FF(self.OutPixelFormat))
 	dst.Image.Y = fromCPtr(unsafe.Pointer(dataPtr[0]), lsize)
 	dst.Image.Cb = fromCPtr(unsafe.Pointer(dataPtr[1]), csize)
 	dst.Image.Cr = fromCPtr(unsafe.Pointer(dataPtr[2]), csize)
@@ -211,13 +198,13 @@ func (self *VideoScaler) VideoScale(src *VideoFrame) (dst *VideoFrame, err error
 	if self.swsCtx == nil {
 		self.inHeight = src.Image.Rect.Dy()
 
-		self.swsCtx = C.sws_getContext(C.int(src.Image.Rect.Dx()), C.int(self.inHeight), int32(src.Frame.format),
+		self.swsCtx = C.sws_getContext(C.int(src.Image.Rect.Dx()), C.int(self.inHeight), int32(src.frame.format),
 			C.int(self.OutWidth), C.int(self.OutHeight), PixelFormatAV2FF(self.OutPixelFormat),
 			C.SWS_BILINEAR, (*C.SwsFilter)(C.NULL), (*C.SwsFilter)(C.NULL), (*C.double)(C.NULL))
 
 		if self.swsCtx == nil {
 			err = fmt.Errorf("Impossible to create scale context for the conversion fmt:%d s:%dx%d -> fmt:%d s:%dx%d\n",
-				PixelFormatFF2AV(int32(src.Frame.format)), src.Image.Rect.Dx(), self.inHeight,
+				PixelFormatFF2AV(int32(src.frame.format)), src.Image.Rect.Dx(), self.inHeight,
 				self.OutPixelFormat, self.OutWidth, self.OutHeight)
 			return
 		}
@@ -260,9 +247,9 @@ func (self *FramerateConverter) ConvertFramerate(in *VideoFrame) (out []*VideoFr
 		return
 	}
 
-	in.Frame.pts = C.int64_t(self.pts)
+	in.frame.pts = C.int64_t(self.pts)
 	self.pts++
-	cret := C.av_buffersrc_add_frame(self.graphSource, in.Frame)
+	cret := C.av_buffersrc_add_frame(self.graphSource, in.frame)
 	if int(cret) < 0 {
 		err = fmt.Errorf("av_buffersrc_add_frame failed")
 		return
@@ -280,15 +267,13 @@ func (self *FramerateConverter) ConvertFramerate(in *VideoFrame) (out []*VideoFr
 		csize := frame.linesize[1] * frame.height
 
 		f := &VideoFrame{}
-		f.Frame = frame
+		f.frame = frame
 		f.Image.Y = fromCPtr(unsafe.Pointer(frame.data[0]), int(lsize))
 		f.Image.Cb = fromCPtr(unsafe.Pointer(frame.data[1]), int(csize))
 		f.Image.Cr = fromCPtr(unsafe.Pointer(frame.data[2]), int(csize))
 		f.Image.YStride = int(frame.linesize[0])
 		f.Image.CStride = int(frame.linesize[1])
 		f.Image.Rect = in.Image.Rect
-		f.Framerate.Num = self.OutFpsNum
-		f.Framerate.Den = self.OutFpsDen
 		out = append(out, f)
 	}
 	return
@@ -517,7 +502,7 @@ func (enc *VideoEncoder) encodeOne(img *VideoFrame) (gotpkt bool, pkt av.Packet,
 
 	ff.frame.width = C.int(img.Image.Rect.Dx())
 	ff.frame.height = C.int(img.Image.Rect.Dy())
-	ff.frame.format = img.Frame.format
+	ff.frame.format = img.frame.format
 	ff.frame.sample_aspect_ratio.num = 0 // TODO
 	ff.frame.sample_aspect_ratio.den = 1
 
@@ -605,11 +590,9 @@ func (self *VideoEncoder) scale(img *VideoFrame) (out *VideoFrame, err error) {
 func (self *VideoEncoder) convertFramerate(img *VideoFrame) (out []*VideoFrame, err error) {
 	if self.framerateConverter == nil {
 		self.framerateConverter = &FramerateConverter{
-			inPixelFormat:  PixelFormatFF2AV(int32(img.Frame.format)),
+			inPixelFormat:  PixelFormatFF2AV(int32(img.frame.format)),
 			inWidth:        img.Image.Rect.Dx(),
 			inHeight:       img.Image.Rect.Dy(),
-			inFpsNum:       img.Framerate.Num,
-			inFpsDen:       img.Framerate.Den,
 			OutPixelFormat: self.pixelFormat,
 			OutWidth:       self.width,
 			OutHeight:      self.height,
@@ -647,7 +630,7 @@ func (enc *VideoEncoder) Encode(img *VideoFrame) (pkts []av.Packet, err error) {
 	// When converting to a framerate higher than that of the input,
 	// convertFramerate can return multiple frames, so process them all here.
 	for _, f := range frames {
-		if PixelFormatFF2AV(int32(f.Frame.format)) != enc.pixelFormat || f.Width() != enc.width || f.Height() != enc.height {
+		if PixelFormatFF2AV(int32(f.frame.format)) != enc.pixelFormat || f.Width() != enc.width || f.Height() != enc.height {
 			if f, err = enc.scale(f); err != nil {
 				return nil, err
 			}
@@ -786,8 +769,6 @@ func NewVideoEncoderByName(name string) (enc *VideoEncoder, err error) {
 type VideoDecoder struct {
 	ff        *ffctx
 	Extradata []byte
-	fpsNum    int
-	fpsDen    int
 }
 
 func (self *VideoDecoder) Setup() (err error) {
@@ -813,11 +794,10 @@ func (self *VideoDecoder) Decode(frame *VideoFrame, pkt []byte) (img *VideoFrame
 	}
 
 	if cerr >= C.int(0) {
-
-		ret := C.avcodec_receive_frame(ff.codecCtx, frame.Frame)
+		ret := C.avcodec_receive_frame(ff.codecCtx, frame.frame)
 		if ret == 0 {
 
-			fr := frame.Frame
+			fr := frame.frame
 			w := int(fr.width)
 			h := int(fr.height)
 			ys := int(fr.linesize[0])
@@ -832,12 +812,6 @@ func (self *VideoDecoder) Decode(frame *VideoFrame, pkt []byte) (img *VideoFrame
 				SubsampleRatio: image.YCbCrSubsampleRatio420,
 				Rect:           image.Rect(0, 0, w, h),
 			}
-
-			frame.ImageGray = image.Gray{
-				Pix:    fromCPtr(unsafe.Pointer(fr.data[0]), w*h),
-				Stride: ys,
-				Rect:   image.Rect(0, 0, w, h),
-			}
 		}
 	}
 
@@ -848,16 +822,16 @@ func (self *VideoDecoder) DecodeSingle(pkt []byte) (img *VideoFrame, err error) 
 	ff := &self.ff.ff
 	cgotimg := C.int(0)
 	frame := C.av_frame_alloc()
-	//cerr := C.wrap_avcodec_decode_video2(ff.codecCtx, frame, unsafe.Pointer(&pkt[0]), C.int(len(pkt)), &cgotimg)
-	cerr := C.wrap_avcodec_send_packet(ff.codecCtx, unsafe.Pointer(&pkt[0]), C.int(len(pkt)))
+	cerr := C.wrap_avcodec_decode_video2(ff.codecCtx, frame, unsafe.Pointer(&pkt[0]), C.int(len(pkt)), &cgotimg)
+	// cerr := C.wrap_avcodec_send_packet(ff.codecCtx, unsafe.Pointer(&pkt[0]), C.int(len(pkt)))
 	if cerr < C.int(0) {
 		err = fmt.Errorf("ffmpeg: avcodec_decode_video2 failed: %d", cerr)
 		return
 	}
 	//https://stackoverflow.com/questions/25431413/decode-compressed-frame-to-memory-using-libav-avcodec-decode-video2
 	if cgotimg == C.int(0) {
-		//cerr = C.wrap_avcodec_decode_video2_empty(ff.codecCtx, frame, unsafe.Pointer(&pkt[0]), C.int(0), &cgotimg)
-		cerr := C.wrap_avcodec_send_packet(ff.codecCtx, unsafe.Pointer(&pkt[0]), C.int(len(pkt)))
+		cerr = C.wrap_avcodec_decode_video2_empty(ff.codecCtx, frame, unsafe.Pointer(&pkt[0]), C.int(0), &cgotimg)
+		// cerr := C.wrap_avcodec_send_packet(ff.codecCtx, unsafe.Pointer(&pkt[0]), C.int(len(pkt)))
 		if cerr < C.int(0) {
 			err = fmt.Errorf("ffmpeg: avcodec_decode_video2 failed: %d", cerr)
 			return
@@ -867,23 +841,20 @@ func (self *VideoDecoder) DecodeSingle(pkt []byte) (img *VideoFrame, err error) 
 		w := int(frame.width)
 		h := int(frame.height)
 		ys := int(frame.linesize[0])
+		cs := int(frame.linesize[1])
 
 		img = &VideoFrame{
-			Frame: frame,
 			Image: image.YCbCr{
-				Y:              fromCPtr(unsafe.Pointer(frame.data[0]), w*h),
-				Cb:             fromCPtr(unsafe.Pointer(frame.data[1]), w*h/4),
-				Cr:             fromCPtr(unsafe.Pointer(frame.data[2]), w*h/4),
+				Y:              fromCPtr(unsafe.Pointer(frame.data[0]), ys*h),
+				Cb:             fromCPtr(unsafe.Pointer(frame.data[1]), cs*h/2),
+				Cr:             fromCPtr(unsafe.Pointer(frame.data[2]), cs*h/2),
 				YStride:        ys,
-				CStride:        ys / 2,
+				CStride:        cs,
 				SubsampleRatio: image.YCbCrSubsampleRatio420,
 				Rect:           image.Rect(0, 0, w, h),
 			},
-			ImageGray: image.Gray{
-				Pix:    fromCPtr(unsafe.Pointer(frame.data[0]), w*h),
-				Stride: ys,
-				Rect:   image.Rect(0, 0, w, h),
-			}}
+			frame: frame,
+		}
 	}
 
 	return
@@ -891,19 +862,6 @@ func (self *VideoDecoder) DecodeSingle(pkt []byte) (img *VideoFrame, err error) 
 
 func (dec *VideoDecoder) Close() {
 	freeFFCtx(dec.ff)
-}
-
-func (dec *VideoDecoder) SetFramerate(num, den int) (err error) {
-	dec.fpsNum = num
-	dec.fpsDen = den
-	return
-}
-
-func (dec VideoDecoder) GetFramerate() (num, den int) {
-	//ff := &dec.ff.ff
-	num = dec.fpsNum // int(ff.codecCtx.Framerate.num)
-	den = dec.fpsDen //int(ff.codecCtx.Framerate.den)
-	return
 }
 
 func NewVideoDecoder(decoder *VideoDecoder, stream av.CodecData) (err error) {

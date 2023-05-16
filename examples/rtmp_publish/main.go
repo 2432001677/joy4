@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/kerberos-io/joy4/av/pktque"
-	"github.com/kerberos-io/joy4/format"
-	"github.com/kerberos-io/joy4/av/avutil"
-	"github.com/kerberos-io/joy4/format/rtmp"
+	"github.com/2432001677/joy4/av/avutil"
+	"github.com/2432001677/joy4/av/pktque"
+	"github.com/2432001677/joy4/format"
+	"github.com/2432001677/joy4/format/rtmp"
 )
 
 func init() {
@@ -24,4 +24,3 @@ func main() {
 	file.Close()
 	conn.Close()
 }
-

@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/av/avutil"
-	"github.com/kerberos-io/joy4/av/pktque"
-	"github.com/kerberos-io/joy4/av/pubsub"
-	"github.com/kerberos-io/joy4/format"
-	"github.com/kerberos-io/joy4/format/rtmp"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/av/avutil"
+	"github.com/2432001677/joy4/av/pktque"
+	"github.com/2432001677/joy4/av/pubsub"
+	"github.com/2432001677/joy4/format"
+	"github.com/2432001677/joy4/format/rtmp"
 	"sync"
 	"time"
 )

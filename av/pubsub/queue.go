@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/av/pktque"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/av/pktque"
 )
 
 //        time

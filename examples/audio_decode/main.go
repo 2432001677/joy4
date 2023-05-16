@@ -1,11 +1,10 @@
-
 package main
 
 import (
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/format"
-	"github.com/kerberos-io/joy4/av/avutil"
-	"github.com/kerberos-io/joy4/cgo/ffmpeg"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/av/avutil"
+	"github.com/2432001677/joy4/cgo/ffmpeg"
+	"github.com/2432001677/joy4/format"
 )
 
 // need ffmpeg installed
@@ -37,4 +36,3 @@ func main() {
 
 	file.Close()
 }
-

@@ -1,10 +1,37 @@
 package codec
 
 import (
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/codec/fake"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/codec/fake"
 	"time"
 )
+
+
+type OpusCodecData struct {
+	typ            av.CodecType
+	SampleRate_    int
+	ChannelLayout_ av.ChannelLayout
+}
+
+func (self OpusCodecData) Type() av.CodecType {
+	return self.typ
+}
+
+func (self OpusCodecData) SampleRate() int {
+	return self.SampleRate_
+}
+
+func (self OpusCodecData) ChannelLayout() av.ChannelLayout {
+	return self.ChannelLayout_
+}
+
+func (self OpusCodecData) PacketDuration(data []byte) (time.Duration, error) {
+	return time.Duration(20) * time.Millisecond, nil
+}
+
+func (self OpusCodecData) SampleFormat() av.SampleFormat {
+	return av.FLT
+}
 
 type PCMUCodecData struct {
 	typ av.CodecType
@@ -36,9 +63,22 @@ func NewPCMMulawCodecData() av.AudioCodecData {
 	}
 }
 
+func NewPCMCodecData() av.AudioCodecData {
+	return PCMUCodecData{
+		typ: av.PCM,
+	}
+}
+
 func NewPCMAlawCodecData() av.AudioCodecData {
 	return PCMUCodecData{
 		typ: av.PCM_ALAW,
+	}
+}
+func NewOpusCodecData(sr int, cc av.ChannelLayout) av.AudioCodecData {
+	return OpusCodecData{
+		typ:            av.OPUS,
+		SampleRate_:    sr,
+		ChannelLayout_: cc,
 	}
 }
 
@@ -47,10 +87,7 @@ type SpeexCodecData struct {
 }
 
 func (self SpeexCodecData) PacketDuration(data []byte) (time.Duration, error) {
-	// libavcodec/libspeexdec.c
-	// samples = samplerate/50
-	// duration = 0.02s
-	return time.Millisecond*20, nil
+	return time.Millisecond * 20, nil
 }
 
 func NewSpeexCodecData(sr int, cl av.ChannelLayout) SpeexCodecData {

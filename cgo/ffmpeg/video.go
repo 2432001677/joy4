@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/codec/h264parser"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/codec/h264parser"
 )
 
 /*

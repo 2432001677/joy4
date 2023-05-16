@@ -1,8 +1,8 @@
 package rtsp
 
 import (
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/format/rtsp/sdp"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/format/rtsp/sdp"
 	"time"
 )
 
@@ -19,11 +19,10 @@ type Stream struct {
 	spsChanged bool
 	ppsChanged bool
 
-	gotpkt    bool
-	pkt       av.Packet
-	timestamp uint32
+	gotpkt         bool
+	pkt            av.Packet
+	timestamp      uint32
 	firsttimestamp uint32
 
 	lasttime time.Duration
 }
-

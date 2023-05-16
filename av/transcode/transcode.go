@@ -1,26 +1,21 @@
-
 // Package transcoder implements Transcoder based on Muxer/Demuxer and AudioEncoder/AudioDecoder interface.
 package transcode
 
 import (
 	"fmt"
+	"github.com/2432001677/joy4/av"
+	"github.com/2432001677/joy4/av/pktque"
 	"time"
-	"github.com/kerberos-io/joy4/av"
-	"github.com/kerberos-io/joy4/av/pktque"
-	"github.com/kerberos-io/joy4/cgo/ffmpeg"
 )
 
 var Debug bool
 
 type tStream struct {
-	codec av.CodecData
-	timeline *pktque.Timeline
+	codec              av.CodecData
+	timeline           *pktque.Timeline
 	aencodec, adecodec av.AudioCodecData
-	aenc av.AudioEncoder
-	adec av.AudioDecoder
-	vencodec, vdecodec av.VideoCodecData
-	venc *ffmpeg.VideoEncoder
-	vdec *ffmpeg.VideoDecoder
+	aenc               av.AudioEncoder
+	adec               av.AudioDecoder
 }
 
 type Options struct {
@@ -28,16 +23,13 @@ type Options struct {
 	FindAudioDecoderEncoder func(codec av.AudioCodecData, i int) (
 		need bool, dec av.AudioDecoder, enc av.AudioEncoder, err error,
 	)
-	FindVideoDecoderEncoder func(codec av.VideoCodecData, i int, percentage int) (
-		need bool, dec *ffmpeg.VideoDecoder, enc *ffmpeg.VideoEncoder, err error,
-	)
 }
 
 type Transcoder struct {
-	streams                 []*tStream
+	streams []*tStream
 }
 
-func NewTranscoder(streams []av.CodecData, options Options, percentage int) (_self *Transcoder, err error) {
+func NewTranscoder(streams []av.CodecData, options Options) (_self *Transcoder, err error) {
 	self := &Transcoder{}
 	self.streams = []*tStream{}
 
@@ -63,27 +55,7 @@ func NewTranscoder(streams []av.CodecData, options Options, percentage int) (_se
 					ts.adec = dec
 				}
 			}
-		} else if stream.Type().IsVideo() {
-			if options.FindVideoDecoderEncoder != nil {
-				var ok bool
-				var enc *ffmpeg.VideoEncoder
-				var dec *ffmpeg.VideoDecoder
-				ok, dec, enc, err = options.FindVideoDecoderEncoder(stream.(av.VideoCodecData), i, percentage)
-				if ok {
-					if err != nil {
-						return
-					}
-					ts.timeline = &pktque.Timeline{}
-					if ts.codec, err = enc.CodecData(); err != nil {
-						return
-					}
-					ts.vencodec = ts.codec.(av.VideoCodecData)
-					ts.vdecodec = stream.(av.VideoCodecData)
-					ts.venc = enc
-					ts.vdec = dec
-				}
-			}
-		}
+		} 
 		self.streams = append(self.streams, ts)
 	}
 
@@ -134,54 +106,6 @@ func (self *tStream) audioDecodeAndEncode(inpkt av.Packet) (outpkts []av.Packet,
 	return
 }
 
-func (self *tStream) videoDecodeAndEncode(inpkt av.Packet) (outpkts []av.Packet, err error) {
-	var dur time.Duration
-	var frame *ffmpeg.VideoFrame
-	if frame, err = self.vdec.Decode(inpkt.Data); err != nil || frame == nil {
-		return
-	}
-
-	//if dur, err = self.vdecodec.PacketDuration(inpkt.Data); err != nil {
-	//	err = fmt.Errorf("transcode: PacketDuration() failed for input video stream #%d", inpkt.Idx)
-	//	return
-	//}
-
-	if Debug {
-		fmt.Println("transcode: push", inpkt.Time, dur)
-	}
-	self.timeline.Push(inpkt.Time, dur)
-
-	var _outpkts []av.Packet
-	if _outpkts, err = self.venc.Encode(frame); err != nil {
-		return
-	}
-	for _, _outpkt := range _outpkts {
-		if fpsNum, fpsDen := self.vencodec.Framerate(); fpsNum <= 0 || fpsDen <= 0 {
-			// FIXME this is a bit hacky
-			// Read codec data after encoding (because the sps and pps are not ready before the first keyframe is encoded)
-			var codecData av.VideoCodecData
-			codecData, err = self.venc.CodecData()
-			if err != nil {
-				return
-			}
-			self.vencodec = codecData.(av.VideoCodecData)
-		}
-		if dur, err = self.vencodec.PacketDuration(_outpkt.Data); err != nil {
-			err = fmt.Errorf("transcode: PacketDuration() failed for output video stream #%d", inpkt.Idx)
-			return
-		}
-		// TODO probably not needed now that _outpkt is an av.Packet
-		outpkt := av.Packet{IsKeyFrame: _outpkt.IsKeyFrame, Idx: inpkt.Idx, Data: _outpkt.Data}
-		outpkt.Time = self.timeline.Pop(dur)
-
-		if Debug {
-			fmt.Println("transcode: pop", outpkt.Time, dur)
-		}
-
-		outpkts = append(outpkts, outpkt)
-	}
-	return
-}
 
 // Do the transcode.
 //
@@ -191,10 +115,6 @@ func (self *Transcoder) Do(pkt av.Packet) (out []av.Packet, err error) {
 	stream := self.streams[pkt.Idx]
 	if stream.aenc != nil && stream.adec != nil {
 		if out, err = stream.audioDecodeAndEncode(pkt); err != nil {
-			return
-		}
-	} else if stream.venc != nil && stream.vdec != nil {
-		if out, err = stream.videoDecodeAndEncode(pkt); err != nil {
 			return
 		}
 	} else {
@@ -222,14 +142,6 @@ func (self *Transcoder) Close() (err error) {
 			stream.adec.Close()
 			stream.adec = nil
 		}
-		if stream.venc != nil {
-			stream.venc.Close()
-			stream.venc = nil
-		}
-		if stream.vdec != nil {
-			stream.vdec.Close()
-			stream.vdec = nil
-		}
 	}
 	self.streams = nil
 	return
@@ -238,13 +150,13 @@ func (self *Transcoder) Close() (err error) {
 // Wrap transcoder and origin Muxer into new Muxer.
 // Write to new Muxer will do transcoding automatically.
 type Muxer struct {
-	av.Muxer // origin Muxer
-	Options // transcode options
+	av.Muxer   // origin Muxer
+	Options    // transcode options
 	transcoder *Transcoder
 }
 
 func (self *Muxer) WriteHeader(streams []av.CodecData) (err error) {
-	if self.transcoder, err = NewTranscoder(streams, self.Options, 100); err != nil {
+	if self.transcoder, err = NewTranscoder(streams, self.Options); err != nil {
 		return
 	}
 	var newstreams []av.CodecData
@@ -283,7 +195,7 @@ type Demuxer struct {
 	av.Demuxer
 	Options
 	transcoder *Transcoder
-	outpkts []av.Packet
+	outpkts    []av.Packet
 }
 
 func (self *Demuxer) prepare() (err error) {
@@ -292,7 +204,7 @@ func (self *Demuxer) prepare() (err error) {
 		if streams, err = self.Demuxer.Streams(); err != nil {
 			return
 		}
-		if self.transcoder, err = NewTranscoder(streams, self.Options, 100); err != nil {
+		if self.transcoder, err = NewTranscoder(streams, self.Options); err != nil {
 			return
 		}
 	}

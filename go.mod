@@ -1,4 +1,4 @@
-module github.com/kerberos-io/joy4
+module github.com/2432001677/joy4
 
 go 1.16
 

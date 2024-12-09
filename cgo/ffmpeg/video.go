@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/codec/h264parser"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/codec/h264parser"
 )
 
 /*
@@ -46,8 +46,8 @@ type VideoFramerate struct {
 }
 
 type VideoFrame struct {
-	Image      image.YCbCr
-	frame      *C.AVFrame
+	Image image.YCbCr
+	frame *C.AVFrame
 }
 
 func (self *VideoFrame) Free() {
@@ -82,7 +82,6 @@ func (v VideoFrame) GetResolution() (w, h int) {
 func (v VideoFrame) GetDataPtr() (y, cb, cr *[]uint8) {
 	return &v.Image.Y, &v.Image.Cb, &v.Image.Cr
 }
-
 
 func (v VideoFrame) GetScanningMode() (mode av.ScanningMode) {
 	if int(v.frame.interlaced_frame) != 0 {
@@ -120,7 +119,6 @@ func (v *VideoFrame) SetStride(yStride, cStride int) {
 func (v *VideoFrame) SetResolution(w, h int) {
 	v.Image.Rect = image.Rectangle{image.Point{0, 0}, image.Point{w, h}}
 }
-
 
 type VideoScaler struct {
 	inHeight       int

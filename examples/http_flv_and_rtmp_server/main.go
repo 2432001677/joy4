@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/2432001677/joy4/av/avutil"
-	"github.com/2432001677/joy4/av/pubsub"
-	"github.com/2432001677/joy4/format"
-	"github.com/2432001677/joy4/format/flv"
-	"github.com/2432001677/joy4/format/rtmp"
+	"github.com/BruceCatYu/joy4/av/avutil"
+	"github.com/BruceCatYu/joy4/av/pubsub"
+	"github.com/BruceCatYu/joy4/format"
+	"github.com/BruceCatYu/joy4/format/flv"
+	"github.com/BruceCatYu/joy4/format/rtmp"
 	"io"
 	"net/http"
 	"sync"

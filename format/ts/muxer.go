@@ -5,10 +5,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/codec/aacparser"
-	"github.com/2432001677/joy4/codec/h264parser"
-	"github.com/2432001677/joy4/format/ts/tsio"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/codec/aacparser"
+	"github.com/BruceCatYu/joy4/codec/h264parser"
+	"github.com/BruceCatYu/joy4/format/ts/tsio"
 )
 
 var CodecTypes = []av.CodecType{av.H264, av.AAC}

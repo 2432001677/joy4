@@ -1,11 +1,10 @@
 package codec
 
 import (
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/codec/fake"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/codec/fake"
 	"time"
 )
-
 
 type OpusCodecData struct {
 	typ            av.CodecType
@@ -98,4 +97,3 @@ func NewSpeexCodecData(sr int, cl av.ChannelLayout) SpeexCodecData {
 	codec.ChannelLayout_ = cl
 	return codec
 }
-

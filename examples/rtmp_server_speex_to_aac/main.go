@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/av/avutil"
-	"github.com/2432001677/joy4/av/transcode"
-	"github.com/2432001677/joy4/cgo/ffmpeg"
-	"github.com/2432001677/joy4/format"
-	"github.com/2432001677/joy4/format/rtmp"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/av/avutil"
+	"github.com/BruceCatYu/joy4/av/transcode"
+	"github.com/BruceCatYu/joy4/cgo/ffmpeg"
+	"github.com/BruceCatYu/joy4/format"
+	"github.com/BruceCatYu/joy4/format/rtmp"
 )
 
 // need ffmpeg with libspeex and libfdkaac installed

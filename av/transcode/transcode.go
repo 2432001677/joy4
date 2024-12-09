@@ -3,8 +3,8 @@ package transcode
 
 import (
 	"fmt"
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/av/pktque"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/av/pktque"
 	"time"
 )
 
@@ -55,7 +55,7 @@ func NewTranscoder(streams []av.CodecData, options Options) (_self *Transcoder, 
 					ts.adec = dec
 				}
 			}
-		} 
+		}
 		self.streams = append(self.streams, ts)
 	}
 
@@ -105,7 +105,6 @@ func (self *tStream) audioDecodeAndEncode(inpkt av.Packet) (outpkts []av.Packet,
 
 	return
 }
-
 
 // Do the transcode.
 //

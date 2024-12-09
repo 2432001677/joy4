@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/utils/bits/pio"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/utils/bits/pio"
 )
 
 func TsToTime(ts int32) time.Duration {

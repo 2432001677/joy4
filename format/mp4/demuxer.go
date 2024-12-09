@@ -6,10 +6,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/codec/aacparser"
-	"github.com/2432001677/joy4/codec/h264parser"
-	"github.com/2432001677/joy4/format/mp4/mp4io"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/codec/aacparser"
+	"github.com/BruceCatYu/joy4/codec/h264parser"
+	"github.com/BruceCatYu/joy4/format/mp4/mp4io"
 )
 
 type Demuxer struct {

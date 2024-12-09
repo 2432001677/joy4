@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/utils/bits"
-	"github.com/2432001677/joy4/utils/bits/pio"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/utils/bits"
+	"github.com/BruceCatYu/joy4/utils/bits/pio"
 	"time"
 )
 

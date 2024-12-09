@@ -19,12 +19,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2432001677/joy4/av"
-	"github.com/2432001677/joy4/codec"
-	"github.com/2432001677/joy4/codec/aacparser"
-	"github.com/2432001677/joy4/codec/h264parser"
-	"github.com/2432001677/joy4/codec/h265parser"
-	"github.com/2432001677/joy4/format/rtsp/sdp"
+	"github.com/BruceCatYu/joy4/av"
+	"github.com/BruceCatYu/joy4/codec"
+	"github.com/BruceCatYu/joy4/codec/aacparser"
+	"github.com/BruceCatYu/joy4/codec/h264parser"
+	"github.com/BruceCatYu/joy4/codec/h265parser"
+	"github.com/BruceCatYu/joy4/format/rtsp/sdp"
 )
 
 const (
@@ -945,14 +945,14 @@ func (client *RTSPClient) CodecUpdateVPS(val []byte) {
 
 }
 
-//Println mini logging functions
+// Println mini logging functions
 func (client *RTSPClient) Println(v ...interface{}) {
 	if client.options.Debug {
 		log.Println(v)
 	}
 }
 
-//binSize
+// binSize
 func binSize(val int) []byte {
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, uint32(val))
